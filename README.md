@@ -1,70 +1,58 @@
-# Getting Started with Create React App
+# CrackMate
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+CrackMate is a modern, AI-powered coding and interview assistant built with Electron and React. It helps you practice coding and aptitude questions, analyze screenshots, upload your resume for personalized interview prep, and interact with AI using your voice—all in a beautiful, desktop-friendly UI.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Voice Assistant:** Start/stop listening and ask coding or aptitude questions by voice. AI only responds when you ask a question.
+- **Screenshot Solving:** Take a screenshot of any coding or aptitude problem (even with a solution), and CrackMate will extract, analyze, and provide:
+  - For coding: Approach, Solution (with code/comments), Complexity (time/space, as bullets), or Comparison if a solution is present.
+  - For aptitude: Correct answer and a short explanation.
+- **Resume Upload:** Upload your PDF/DOCX resume. The AI will use your background to personalize interview answers.
+- **Keyboard Shortcuts:** Quickly take screenshots, move the window, start over, toggle visibility, and more.
+- **Beautiful UI:** Modern, responsive, and distraction-free design with dynamic content areas and code blocks.
+- **No unnecessary file saving:** Screenshots are processed in-memory for privacy and speed.
 
-### `npm start`
+## Setup
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+1. **Clone the repo:**
+   ```bash
+   git clone <your-repo-url>
+   cd speech-ui
+   ```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Set up environment variables:**
+   - Copy `.env.example` to `.env` and fill in your Azure/OpenAI API keys and endpoints.
+4. **Run the app:**
+   ```bash
+   npm start
+   ```
+   This will launch both the React app and Electron shell.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Usage
 
-### `npm test`
+- **Start/Stop Listening:** Click the Start button to begin voice recognition. Click Stop to end.
+- **Ask Questions:** Speak your coding or aptitude question. The AI will respond only to questions.
+- **Take Screenshots:** Use the shortcut or UI to capture a problem from your screen. The AI will analyze and respond with structured sections.
+- **Upload Resume:** Use the Upload Resume button to provide your background for personalized answers.
+- **Read AI Responses:** All responses are structured, readable, and code is formatted with scroll and syntax highlighting.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Keyboard Shortcuts
 
-### `npm run build`
+- **Take Screenshot:** `Ctrl + H`
+- **Start Over:** `Ctrl + G`
+- **Move Window:** `Ctrl + Arrow Keys`
+- **Toggle App Visibility:** `Ctrl + .`
+- **Quit App:** `Ctrl + Q`
+- **Solve Screenshots:** `Ctrl + Enter`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## License
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+MIT
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+_CrackMate: Your AI-powered coding and interview companion._
