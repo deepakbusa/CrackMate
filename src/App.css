@@ -5,6 +5,41 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Prevent cursor changes on all elements */
+* {
+  cursor: default !important;
+}
+
+/* Hide all scrollbars except for code blocks */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* Internet Explorer 10+ */
+}
+
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+}
+
+/* Keep scrollbars only for code blocks */
+.solution-block::-webkit-scrollbar {
+  display: block !important;
+  height: 6px;
+}
+
+.solution-block::-webkit-scrollbar-thumb {
+  background: #1976d2;
+  border-radius: 3px;
+}
+
+.solution-block::-webkit-scrollbar-track {
+  background: #23272e;
+}
+
+.solution-block {
+  scrollbar-width: thin !important;
+  scrollbar-color: #1976d2 #23272e !important;
+}
+
 .App {
   width: 100%;
   min-height: 80px; /* Increased to match new default height */

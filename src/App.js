@@ -149,12 +149,24 @@ const App = () => {
     } else if (isShortcutsHovered && shortcutsRef.current) {
       panelHeight = shortcutsRef.current.scrollHeight;
     }
+    
+    // Get the actual content area height
+    const contentArea = document.querySelector('.content-area');
+    const contentHeight = contentArea ? contentArea.scrollHeight : 0;
+    
+    // Calculate total height including content area
     const appHeight = document.querySelector('.App').scrollHeight;
     let totalHeight = appHeight + (panelHeight ? panelHeight : 0) + 20;
+    
+    // If there's content in the content area, use that for dynamic sizing
+    if (contentHeight > 0) {
+      totalHeight = Math.max(totalHeight, contentHeight + 120); // 120px for header and padding
+    }
+    
     if (window.electron && window.electron.setSize) {
       window.electron.setSize(600, Math.max(150, totalHeight));
     }
-  }, [transcript, aiResponse, isSettingsHovered, isShortcutsHovered]);
+  }, [transcript, aiResponse, isSettingsHovered, isShortcutsHovered, isThinking, isSolvingScreenshots, screenshotQueue.length]);
 
   // Helper: check if a string is a question
   const isQuestion = (text) => {
@@ -347,16 +359,20 @@ const App = () => {
 
       let userPrompt = prompt;
       if (imageData) {
-        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- State both time and space complexity, clearly labeled as 'Time Complexity' and 'Space Complexity'.\n\nIf no solution is present, respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- State both time and space complexity, clearly labeled as 'Time Complexity' and 'Space Complexity'.\n\nIf it is an aptitude or option-based question, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
+        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present, respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf it is an aptitude or option-based question, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
       }
 
       if (imageData) {
+        // Handle both single image and array of images
+        const images = Array.isArray(imageData) ? imageData : [imageData];
+        const content = [
+          { type: 'text', text: userPrompt },
+          ...images.map(img => ({ type: 'image_url', image_url: { url: img } }))
+        ];
+        
         messages.push({
           role: 'user',
-          content: [
-            { type: 'text', text: userPrompt },
-            { type: 'image_url', image_url: { url: imageData } },
-          ],
+          content: content,
         });
       } else {
         messages.push({ role: 'user', content: userPrompt });
@@ -451,17 +467,17 @@ const App = () => {
     if (screenshotQueue.length === 0) return;
     setIsThinking(true);
     setAiResponse('');
-    // Generate a new token for this solve
     const newToken = requestToken + 1;
     setRequestToken(newToken);
     latestRequestToken.current = newToken;
     try {
-      const imageData = screenshotQueue[0];
+      // Send all screenshots together as one request
+      const allScreenshots = [...screenshotQueue];
       let prompt = '';
-      if (screenshotQueue.length > 1) {
-        prompt = `There are ${screenshotQueue.length} screenshots. Please solve the problem(s) shown in these images.`;
+      if (allScreenshots.length > 1) {
+        prompt = `There are ${allScreenshots.length} screenshots that are all part of the same question/problem. Please analyze all images together and provide a comprehensive solution.`;
       }
-      await sendToOpenAI(prompt, imageData, selectedLanguage, newToken);
+      await sendToOpenAI(prompt, allScreenshots, selectedLanguage, newToken);
       setScreenshotQueue([]);
     } catch (error) {
       if (newToken === latestRequestToken.current) {
@@ -562,17 +578,70 @@ const App = () => {
             );
           }
           if (key === 'complexity' && sections[key]) {
-            // Always show two bullets: one for time, one for space (include extra text in the bullet)
-            const time = sections[key].split(/\n|;|,|\u2022|\-/).find(s => /time/i.test(s));
-            const space = sections[key].split(/\n|;|,|\u2022|\-/).find(s => /space/i.test(s));
+            // Improved complexity parsing
+            const complexityText = sections[key];
+            
+            // Try to find time complexity
+            let timeComplexity = null;
+            let spaceComplexity = null;
+            
+            // Look for explicit "Time Complexity" or "Time:" patterns - include the full label
+            const timeMatch = complexityText.match(/((?:time\s*complexity|time)\s*[:：]\s*[^\n\r;]+)/i);
+            if (timeMatch) {
+              timeComplexity = timeMatch[1].trim();
+            }
+            
+            // Look for explicit "Space Complexity" or "Space:" patterns - include the full label
+            const spaceMatch = complexityText.match(/((?:space\s*complexity|space)\s*[:：]\s*[^\n\r;]+)/i);
+            if (spaceMatch) {
+              spaceComplexity = spaceMatch[1].trim();
+            }
+            
+            // If explicit patterns not found, try to split by common separators
+            if (!timeComplexity || !spaceComplexity) {
+              const parts = complexityText.split(/[;\n\r]/).filter(part => part.trim());
+              
+              // Find parts containing time-related keywords
+              const timePart = parts.find(part => 
+                /time|o\(|big\s*o/i.test(part) && !/space/i.test(part)
+              );
+              if (timePart && !timeComplexity) {
+                timeComplexity = timePart.trim();
+              }
+              
+              // Find parts containing space-related keywords
+              const spacePart = parts.find(part => 
+                /space|memory/i.test(part) && !/time/i.test(part)
+              );
+              if (spacePart && !spaceComplexity) {
+                spaceComplexity = spacePart.trim();
+              }
+            }
+            
+            // Fallback: if still not found, show the full text
+            if (!timeComplexity && !spaceComplexity) {
+              return (
+                <div key={key} style={{ marginBottom: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 4, letterSpacing: 0.2 }}>
+                    Complexity
+                  </div>
+                  <div style={{ fontSize: 15, color: '#f8fafd' }}>{complexityText}</div>
+                </div>
+              );
+            }
+            
             return (
               <div key={key} style={{ marginBottom: 16 }}>
                 <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 4, letterSpacing: 0.2 }}>
                   Complexity
                 </div>
                 <ul style={{ paddingLeft: 20, margin: 0 }}>
-                  <li style={{ color: '#f8fafd', fontSize: 15, marginBottom: 4, listStyleType: 'disc' }}>{time ? time.trim() : 'Time complexity not provided.'}</li>
-                  <li style={{ color: '#f8fafd', fontSize: 15, marginBottom: 4, listStyleType: 'disc' }}>{space ? space.trim() : 'Space complexity not provided.'}</li>
+                  <li style={{ color: '#f8fafd', fontSize: 15, marginBottom: 4, listStyleType: 'disc' }}>
+                    {timeComplexity || 'Time complexity not provided.'}
+                  </li>
+                  <li style={{ color: '#f8fafd', fontSize: 15, marginBottom: 4, listStyleType: 'disc' }}>
+                    {spaceComplexity || 'Space complexity not provided.'}
+                  </li>
                 </ul>
               </div>
             );
@@ -883,7 +952,7 @@ const App = () => {
           margin-left: 16px;
           color: #1976d2;
           font-weight: 600;
-          font-size: 12px;
+          // font-size: 12px;
           background: #e3f2fd;
           border-radius: 4px;
           padding: 2px 8px;
