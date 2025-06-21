@@ -9,6 +9,7 @@ import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CircularProgress from '@mui/material/CircularProgress';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
+import Skeleton from '@yisheng90/react-loading';
 
 const AZURE_DOC_INTELLIGENCE_KEY = process.env.REACT_APP_AZURE_DOC_INTELLIGENCE_KEY;
 const AZURE_DOC_INTELLIGENCE_ENDPOINT = process.env.REACT_APP_AZURE_DOC_INTELLIGENCE_ENDPOINT;
@@ -988,9 +989,35 @@ IMPORTANT INSTRUCTIONS:
             </Button>
           )}
           {isUploadingResume && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CircularProgress size={18} color="primary" />
-              <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>Uploading...</span>
+            <div className="skeleton-container" style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 16, 
+              padding: '20px 0',
+              width: '100%'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <CircularProgress size={18} color="primary" />
+                <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>
+                  Uploading and analyzing resume...
+                </span>
+              </div>
+              
+              {/* Skeleton loading for resume analysis */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Skeleton width="100%" height={16} />
+                  <Skeleton width="95%" height={16} />
+                  <Skeleton width="90%" height={16} />
+                  <Skeleton width="85%" height={16} />
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <Skeleton width="92%" height={14} />
+                  <Skeleton width="88%" height={14} />
+                  <Skeleton width="94%" height={14} />
+                </div>
+              </div>
             </div>
           )}
           {resumeUploaded && !isUploadingResume && (
@@ -1183,13 +1210,45 @@ IMPORTANT INSTRUCTIONS:
           <p className="result"><strong>You said:</strong> {transcript}</p>
         )}
         {isThinking && !isSolvingScreenshots && !screenshotQueue.length && (
-          <div className="loading-container">
-            <div className="loading-spinner">
-              <CircularProgress size={24} color="primary" />
-            </div>
-            <div className="loading-text">
-              <span className="loading-title">Processing your request...</span>
-              <span className="loading-subtitle">Analyzing and generating response</span>
+          <div className="loading-container skeleton-container">
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 16, 
+              padding: '20px 0',
+              width: '100%'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <CircularProgress size={20} color="primary" />
+                <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>
+                  {resumeUploaded ? 'Analyzing your question based on resume...' : 'Processing your request...'}
+                </span>
+              </div>
+              
+              {/* Skeleton loading for AI response */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* AI label skeleton */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Skeleton width={80} height={16} />
+                  {resumeUploaded && <Skeleton width={120} height={12} />}
+                </div>
+                
+                {/* Response content skeleton */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <Skeleton width="100%" height={16} />
+                  <Skeleton width="95%" height={16} />
+                  <Skeleton width="90%" height={16} />
+                  <Skeleton width="85%" height={16} />
+                  <Skeleton width="92%" height={16} />
+                </div>
+                
+                {/* Additional skeleton lines for longer responses */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <Skeleton width="88%" height={14} />
+                  <Skeleton width="94%" height={14} />
+                  <Skeleton width="87%" height={14} />
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1258,9 +1317,62 @@ IMPORTANT INSTRUCTIONS:
       )}
 
       {isSolvingScreenshots && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0' }}>
-          <CircularProgress size={20} color="primary" />
-          <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>Solving problem...</span>
+        <div className="skeleton-container" style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: 16, 
+          padding: '20px 0',
+          width: '100%'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <CircularProgress size={20} color="primary" />
+            <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>
+              Analyzing screenshots and generating solution...
+            </span>
+          </div>
+          
+          {/* Skeleton loading for screenshot response */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* AI label skeleton */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Skeleton width={80} height={16} />
+              <Skeleton width={120} height={12} />
+            </div>
+            
+            {/* Section skeletons for screenshot response */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Approach/Comparison section */}
+              <div>
+                <Skeleton width={100} height={18} style={{ marginBottom: 8 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <Skeleton width="100%" height={14} />
+                  <Skeleton width="95%" height={14} />
+                  <Skeleton width="90%" height={14} />
+                </div>
+              </div>
+              
+              {/* Solution section */}
+              <div>
+                <Skeleton width={80} height={18} style={{ marginBottom: 8 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <Skeleton width="100%" height={14} />
+                  <Skeleton width="98%" height={14} />
+                  <Skeleton width="92%" height={14} />
+                  <Skeleton width="96%" height={14} />
+                  <Skeleton width="89%" height={14} />
+                </div>
+              </div>
+              
+              {/* Complexity section */}
+              <div>
+                <Skeleton width={90} height={18} style={{ marginBottom: 8 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <Skeleton width="85%" height={14} />
+                  <Skeleton width="88%" height={14} />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1320,6 +1432,31 @@ IMPORTANT INSTRUCTIONS:
         .solution-block {
           scrollbar-width: thin;
           scrollbar-color: #1976d2 #23272e;
+        }
+        
+        /* Skeleton loading styles */
+        .skeleton-container {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 8px;
+          padding: 16px;
+          margin: 8px 0;
+        }
+        
+        /* Custom skeleton animation */
+        .skeleton-pulse {
+          animation: skeleton-pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes skeleton-pulse {
+          0% {
+            opacity: 0.6;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0.6;
+          }
         }
       `}</style>
     </div>
