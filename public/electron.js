@@ -184,6 +184,10 @@ function createWindow() {
     globalShortcut.register('Control+Enter', () => {
       win.webContents.send('shortcut', { action: 'solveScreenshots' });
     });
+    // Mic toggle (Ctrl+M)
+    globalShortcut.register('Control+M', () => {
+      win.webContents.send('shortcut', { action: 'toggleMic' });
+    });
   });
 
   // Unregister all shortcuts on quit

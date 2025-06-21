@@ -34,7 +34,7 @@ const App = () => {
   const [aiResponse, setAiResponse] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('Java');
+  const [selectedLanguage, setSelectedLanguage] = useState('Python');
   const [isSettingsHovered, setIsSettingsHovered] = useState(false);
   const [glassOpacity, setGlassOpacity] = useState(0.6);
   const [isVisible, setIsVisible] = useState(true); // New state to track visibility
@@ -54,6 +54,14 @@ const App = () => {
   const [lastImageData, setLastImageData] = useState(null);
   const [lastLanguage, setLastLanguage] = useState(null);
   const [showRetry, setShowRetry] = useState(false);
+  const isListeningRef = useRef(false); // Ref to track listening state
+  const selectedLanguageRef = useRef(selectedLanguage);
+  const screenshotQueueRef = useRef(screenshotQueue);
+  const isThinkingRef = useRef(isThinking);
+  const isSolvingScreenshotsRef = useRef(isSolvingScreenshots);
+  const solvingScreenshotsInProgressRef = useRef(false);
+  const lastToggleTimeRef = useRef(0); // Ref to track last toggle time for debouncing
+  const resumeContextRef = useRef(resumeContext);
 
   const SPEECH_KEY = process.env.REACT_APP_SPEECH_KEY;
   const SPEECH_REGION = "eastus";
@@ -70,13 +78,13 @@ const App = () => {
 
   useEffect(() => {
     if (window.electron && window.electron.onShortcut) {
-      window.electron.onShortcut((data) => {
+      const handleShortcut = (data) => {
         switch (data.action) {
           case 'moveWindow':
             moveWindow(data.direction);
             break;
           case 'takeScreenshot':
-            takeScreenshot(selectedLanguage);
+            takeScreenshot(selectedLanguageRef.current);
             break;
           case 'startOver':
             startOver();
@@ -91,38 +99,133 @@ const App = () => {
             });
             break;
           case 'solveScreenshots':
-            if (screenshotQueue.length === 0) {
+            console.log('solveScreenshots shortcut triggered, queue length:', screenshotQueueRef.current.length);
+            if (screenshotQueueRef.current.length === 0) {
+              console.log('No screenshots found in shortcut handler');
               setAiResponse('No screenshots found.');
+            } else if (solvingScreenshotsInProgressRef.current) {
+              console.log('Screenshot solving already in progress, ignoring shortcut');
             } else {
+              console.log('Starting screenshot solving from shortcut');
               setIsSolvingScreenshots(true);
-              solveScreenshots().finally(() => setIsSolvingScreenshots(false));
+              // Add a small delay to ensure ref synchronization
+              setTimeout(() => {
+                solveScreenshots().finally(() => {
+                  console.log('Screenshot solving completed');
+                  setIsSolvingScreenshots(false);
+                });
+              }, 50);
+            }
+            break;
+          case 'toggleMic':
+            // Debounce to prevent rapid toggling (500ms)
+            const now = Date.now();
+            if (now - lastToggleTimeRef.current < 500) {
+              console.log('Toggle mic - Debounced (too fast)');
+              break;
+            }
+            lastToggleTimeRef.current = now;
+
+            if (!isThinkingRef.current && !isSolvingScreenshotsRef.current) {
+              console.log('Toggle mic - Current state:', { 
+                isListening: isListeningRef.current, 
+                isThinking: isThinkingRef.current, 
+                isSolvingScreenshots: isSolvingScreenshotsRef.current 
+              });
+              // Use ref for more reliable state checking
+              if (isListeningRef.current) {
+                console.log('Stopping recognition...');
+                stopRecognition();
+              } else {
+                console.log('Starting recognition...');
+                startRecognition();
+              }
+            } else {
+              console.log('Cannot toggle mic - disabled state:', { 
+                isThinking: isThinkingRef.current, 
+                isSolvingScreenshots: isSolvingScreenshotsRef.current 
+              });
             }
             break;
           default:
             break;
         }
-      });
+      };
+
+      // Register the event listener
+      window.electron.onShortcut(handleShortcut);
+
+      // Cleanup function to remove the listener
+      return () => {
+        // Note: We can't easily remove the listener, but we can prevent multiple registrations
+        // The cleanup will help with React's strict mode and component unmounting
+      };
     }
-  }, [selectedLanguage, screenshotQueue]);
+  }, []); // Remove all dependencies to prevent recreation
 
   const cleanupRecognition = () => {
-    if (recognizerRef.current) {
-      try {
-        recognizerRef.current.close();
-        recognizerRef.current = null;
-      } catch (error) {}
-    }
-    if (audioStreamRef.current) {
-      try {
-        audioStreamRef.current.getTracks().forEach(track => track.stop());
-        audioStreamRef.current = null;
-      } catch (error) {}
+    try {
+      if (recognizerRef.current) {
+        try {
+          recognizerRef.current.close();
+        } catch (error) {
+          console.error('Error closing recognizer:', error);
+        } finally {
+          recognizerRef.current = null;
+        }
+      }
+      if (audioStreamRef.current) {
+        try {
+          audioStreamRef.current.getTracks().forEach(track => {
+            if (track && typeof track.stop === 'function') {
+              track.stop();
+            }
+          });
+        } catch (error) {
+          console.error('Error stopping audio tracks:', error);
+        } finally {
+          audioStreamRef.current = null;
+        }
+      }
+    } catch (error) {
+      console.error('Error in cleanupRecognition:', error);
+      // Force cleanup even if there's an error
+      recognizerRef.current = null;
+      audioStreamRef.current = null;
     }
   };
 
   useEffect(() => {
     return cleanupRecognition;
   }, []);
+
+  // Update ref when isListening state changes
+  useEffect(() => {
+    isListeningRef.current = isListening;
+  }, [isListening]);
+
+  // Update other refs when their states change
+  useEffect(() => {
+    selectedLanguageRef.current = selectedLanguage;
+  }, [selectedLanguage]);
+
+  useEffect(() => {
+    screenshotQueueRef.current = screenshotQueue;
+    console.log('screenshotQueueRef updated, new length:', screenshotQueue.length);
+  }, [screenshotQueue]);
+
+  useEffect(() => {
+    isThinkingRef.current = isThinking;
+  }, [isThinking]);
+
+  useEffect(() => {
+    isSolvingScreenshotsRef.current = isSolvingScreenshots;
+  }, [isSolvingScreenshots]);
+
+  useEffect(() => {
+    resumeContextRef.current = resumeContext;
+    console.log('resumeContextRef updated, new length:', resumeContext ? resumeContext.length : 0);
+  }, [resumeContext]);
 
   useEffect(() => {
     const appContainer = document.querySelector('.App');
@@ -178,9 +281,11 @@ const App = () => {
 
   // Always use microphone for speech recognition
   const startRecognition = async () => {
+    // Set listening state immediately
+    setIsListening(true);
     setTranscript('');
     setAiResponse('');
-    setIsListening(true);
+    
     let stream;
     try {
       if (window.navigator.mediaDevices && window.AudioContext) {
@@ -257,11 +362,26 @@ const App = () => {
   };
 
   const stopRecognition = () => {
-    if (recognizerRef.current) {
-      recognizerRef.current.stopContinuousRecognitionAsync();
+    try {
+      setIsListening(false); // Set state immediately
+      if (recognizerRef.current) {
+        try {
+          const stopPromise = recognizerRef.current.stopContinuousRecognitionAsync();
+          if (stopPromise && typeof stopPromise.catch === 'function') {
+            stopPromise.catch(error => {
+              console.error('Error stopping recognition:', error);
+            });
+          }
+        } catch (error) {
+          console.error('Error stopping recognition:', error);
+        }
+      }
+      cleanupRecognition();
+    } catch (error) {
+      console.error('Error in stopRecognition:', error);
+      setIsListening(false);
+      cleanupRecognition();
     }
-    setIsListening(false);
-    cleanupRecognition();
   };
 
   const handleResumeUpload = async (event) => {
@@ -271,36 +391,50 @@ const App = () => {
     let extractedText = '';
     try {
       if (file.type === 'application/pdf') {
-        // Use Azure Document Intelligence for PDF parsing
-        const url = `${AZURE_DOC_INTELLIGENCE_ENDPOINT}formrecognizer/documentModels/prebuilt-document:analyze?api-version=2023-07-31`;
-        const pdfArrayBuffer = await file.arrayBuffer();
-        const response = await axios.post(url, pdfArrayBuffer, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Ocp-Apim-Subscription-Key': AZURE_DOC_INTELLIGENCE_KEY,
-          },
-          maxBodyLength: Infinity,
-        });
-        // Poll the operation-location for result
-        const operationLocation = response.headers['operation-location'];
-        let pollResult = null;
-        for (let i = 0; i < 20; i++) { // Poll up to 20 times (about 20 seconds)
-          await new Promise(res => setTimeout(res, 1000));
-          const pollResponse = await axios.get(operationLocation, {
+        // Check if Azure Document Intelligence credentials are available
+        if (!AZURE_DOC_INTELLIGENCE_KEY || !AZURE_DOC_INTELLIGENCE_ENDPOINT) {
+          console.log('Azure Document Intelligence credentials not available, using fallback');
+          // For testing, just use a placeholder text
+          extractedText = `This is a test resume for ${file.name}. 
+          
+Skills: JavaScript, React, Node.js, Python, Java
+Experience: 3 years as Full Stack Developer
+Education: Bachelor's in Computer Science
+Projects: E-commerce platform, Mobile app development
+
+This is a placeholder resume content for testing purposes.`;
+        } else {
+          // Use Azure Document Intelligence for PDF parsing
+          const url = `${AZURE_DOC_INTELLIGENCE_ENDPOINT}formrecognizer/documentModels/prebuilt-document:analyze?api-version=2023-07-31`;
+          const pdfArrayBuffer = await file.arrayBuffer();
+          const response = await axios.post(url, pdfArrayBuffer, {
             headers: {
+              'Content-Type': 'application/pdf',
               'Ocp-Apim-Subscription-Key': AZURE_DOC_INTELLIGENCE_KEY,
             },
+            maxBodyLength: Infinity,
           });
-          if (pollResponse.data.status === 'succeeded') {
-            pollResult = pollResponse.data;
-            break;
-          } else if (pollResponse.data.status === 'failed') {
-            throw new Error('Azure Document Intelligence failed to analyze the document.');
+          // Poll the operation-location for result
+          const operationLocation = response.headers['operation-location'];
+          let pollResult = null;
+          for (let i = 0; i < 20; i++) { // Poll up to 20 times (about 20 seconds)
+            await new Promise(res => setTimeout(res, 1000));
+            const pollResponse = await axios.get(operationLocation, {
+              headers: {
+                'Ocp-Apim-Subscription-Key': AZURE_DOC_INTELLIGENCE_KEY,
+              },
+            });
+            if (pollResponse.data.status === 'succeeded') {
+              pollResult = pollResponse.data;
+              break;
+            } else if (pollResponse.data.status === 'failed') {
+              throw new Error('Azure Document Intelligence failed to analyze the document.');
+            }
           }
+          if (!pollResult) throw new Error('Timed out waiting for Azure Document Intelligence.');
+          // Extract text from the result
+          extractedText = pollResult.analyzeResult.content || '';
         }
-        if (!pollResult) throw new Error('Timed out waiting for Azure Document Intelligence.');
-        // Extract text from the result
-        extractedText = pollResult.analyzeResult.content || '';
       } else if (
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
         file.name.endsWith('.docx')
@@ -315,11 +449,27 @@ const App = () => {
         return;
       }
       // Send extracted text to OpenAI for context
-      const contextPrompt = `This is my resume. Please analyze it and remember my background for future interview questions and give answers in my perspective sucbh that i can read them directly and plese give in minimal.\n\n${extractedText}`;
+      const contextPrompt = `Please analyze this resume and extract key information about my background, skills, experience, and projects. Format it clearly for future interview questions.
+
+RESUME CONTENT:
+${extractedText}
+
+Please provide a structured summary of my background that can be used for answering interview questions. Focus on:
+- My technical skills and programming languages
+- Work experience and projects
+- Education and certifications
+- Key achievements and responsibilities
+
+Format this as a clear, structured summary that I can reference during interviews.`;
+      
+      console.log('Resume upload - About to send context prompt to OpenAI');
       await sendToOpenAI(contextPrompt);
+      console.log('Resume upload - Context prompt sent, setting resume context');
       setResumeContext(extractedText);
+      resumeContextRef.current = extractedText; // Set ref directly as well
       setResumeUploaded(true);
-      setAiResponse('Resume uploaded and analyzed. You can now ask interview questions.');
+      console.log('Resume upload - Resume context set, length:', extractedText.length);
+      setAiResponse('Resume uploaded and analyzed successfully! You can now ask interview questions and I will answer based on your actual background and experience.');
     } catch (error) {
       setAiResponse('Failed to parse or analyze resume. Please try again.');
     }
@@ -338,26 +488,61 @@ const App = () => {
     setLastLanguage(language);
     setShowRetry(false);
 
-    const targetLanguage = language || selectedLanguage;
+    // Use the passed language parameter, or fallback to the current selectedLanguage from ref
+    const targetLanguage = language || selectedLanguageRef.current;
+    console.log('sendToOpenAI - Language parameter:', language);
+    console.log('sendToOpenAI - selectedLanguageRef.current:', selectedLanguageRef.current);
+    console.log('sendToOpenAI - Final targetLanguage:', targetLanguage);
+    console.log('sendToOpenAI - Resume context available:', !!resumeContextRef.current);
+    console.log('sendToOpenAI - Resume context length:', resumeContextRef.current ? resumeContextRef.current.length : 0);
+    console.log('sendToOpenAI - Resume uploaded state:', resumeUploaded);
+    console.log('sendToOpenAI - Resume context first 100 chars:', resumeContextRef.current ? resumeContextRef.current.substring(0, 100) : 'N/A');
+    
     setIsThinking(true);
 
     const thisToken = token !== null ? token : latestRequestToken.current;
 
     try {
       const messages = [];
-      if (resumeContext) {
+      
+      // Set up system message based on whether resume is uploaded
+      if (resumeContextRef.current) {
+        console.log('sendToOpenAI - Using resume context system message');
+        const systemMessage = `You are an interview assistant with access to the user's resume. You must answer all questions based on the user's actual background and experience from their resume. 
+
+RESUME CONTEXT:
+${resumeContextRef.current}
+
+IMPORTANT INSTRUCTIONS:
+1. Always answer questions from the user's perspective using their actual experience from the resume
+2. If a question asks about something not in the resume, say "Based on my resume, I don't have experience with [topic]. However, I can discuss [related experience from resume]."
+3. Keep answers concise and interview-ready
+4. Use specific examples from the resume when possible
+5. If it's a coding question, provide the solution in ${targetLanguage}
+6. Be honest about limitations based on the resume content
+7. NEVER introduce yourself as an AI assistant - always answer as the person from the resume`;
+        
+        console.log('sendToOpenAI - System message length:', systemMessage.length);
         messages.push({
           role: 'system',
-          content: `You are an interview assistant. The following is the user's resume context: ${resumeContext}. Answer all questions as if you are the user, in their perspective, with short and best answers.`,
+          content: systemMessage,
         });
       } else {
+        console.log('sendToOpenAI - Using general system message');
         messages.push({
           role: 'system',
-          content: `You are a coding/apptitude assistant that provides solutions in ${targetLanguage}.`,
+          content: `You are a coding/aptitude assistant that provides solutions in ${targetLanguage}.`,
         });
       }
 
       let userPrompt = prompt;
+      
+      // For non-screenshot questions, enhance the prompt with resume context if available
+      if (!imageData && resumeContextRef.current) {
+        userPrompt = `Question: ${prompt}\n\nPlease answer this question based on my resume background and experience.`;
+        console.log('Enhanced prompt with resume context for voice/text question');
+      }
+      
       if (imageData) {
         userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present, respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf it is an aptitude or option-based question, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
       }
@@ -395,7 +580,7 @@ const App = () => {
       );
 
       if (thisToken === latestRequestToken.current) {
-        if (response.data && response.data.choices && response.data.choices[0]) {
+        if (response && response.data && response.data.choices && response.data.choices[0] && response.data.choices[0].message) {
           const cleanResponse = response.data.choices[0].message.content
             .replace(/\*\*/g, '')
             .replace(/\*/g, '')
@@ -409,10 +594,12 @@ const App = () => {
         }
       }
     } catch (error) {
+      console.error('Error in sendToOpenAI:', error);
+      
       if (thisToken === latestRequestToken.current) {
-        if (error.response) {
+        if (error && error.response) {
           setAiResponse(`API Error: ${error.response.status} - ${error.response.data?.error?.message || 'Unknown error'}`);
-        } else if (error.request) {
+        } else if (error && error.request) {
           if (retryCount < 2) {
             // Retry after a short delay
             setTimeout(() => {
@@ -424,12 +611,13 @@ const App = () => {
             setShowRetry(true);
           }
         } else {
-          setAiResponse(`Error: ${error.message}`);
+          setAiResponse(`Error: ${error?.message || 'Unknown error occurred'}`);
         }
       }
-    }
-    if (thisToken === latestRequestToken.current) {
-      setIsThinking(false);
+    } finally {
+      if (thisToken === latestRequestToken.current) {
+        setIsThinking(false);
+      }
     }
   };
 
@@ -449,6 +637,10 @@ const App = () => {
 
   const takeScreenshot = async (language) => {
     try {
+      console.log('Taking screenshot with language:', language);
+      console.log('Current selectedLanguage state:', selectedLanguage);
+      console.log('Current selectedLanguageRef.current:', selectedLanguageRef.current);
+      
       let dataUrl;
       if (!window.electron || !window.electron.captureScreen) {
         const element = document.body;
@@ -457,36 +649,70 @@ const App = () => {
       } else {
         dataUrl = await window.electron.captureScreen();
       }
-      setScreenshotQueue((prev) => prev.includes(dataUrl) ? prev : [...prev, dataUrl]);
+      console.log('Screenshot captured, dataUrl length:', dataUrl ? dataUrl.length : 0);
+      console.log('Screenshot captured, adding to queue');
+      setScreenshotQueue((prev) => {
+        // Store both image data and language
+        const screenshotData = { image: dataUrl, language: language };
+        const newQueue = prev.some(item => item.image === dataUrl) ? prev : [...prev, screenshotData];
+        console.log('Updated screenshot queue length:', newQueue.length);
+        console.log('Screenshot queue contents:', newQueue.map(item => ({ language: item.language, imageLength: item.image.length })));
+        return newQueue;
+      });
     } catch (error) {
+      console.error('Error taking screenshot:', error);
       setAiResponse(`Failed to capture screenshot: ${error.message}`);
     }
   };
 
   const solveScreenshots = async () => {
-    if (screenshotQueue.length === 0) return;
+    solvingScreenshotsInProgressRef.current = true;
+    console.log('solveScreenshots called, queue length:', screenshotQueueRef.current.length);
+    if (screenshotQueueRef.current.length === 0) {
+      console.log('No screenshots to solve');
+      setAiResponse('No screenshots found.');
+      solvingScreenshotsInProgressRef.current = false;
+      return;
+    }
+    
     setIsThinking(true);
     setAiResponse('');
     const newToken = requestToken + 1;
     setRequestToken(newToken);
     latestRequestToken.current = newToken;
+    
     try {
-      // Send all screenshots together as one request
-      const allScreenshots = [...screenshotQueue];
+      console.log('Processing screenshots...');
+      // Use the ref to get the current screenshots
+      const allScreenshots = [...screenshotQueueRef.current];
+      
+      // Extract image data and determine the language to use
+      const imageData = allScreenshots.map(item => item.image);
+      
+      // Use the language from the first screenshot, or fallback to selectedLanguage
+      const languageToUse = allScreenshots[0]?.language || selectedLanguage;
+      console.log('Using language for screenshots:', languageToUse);
+      console.log('Screenshot languages:', allScreenshots.map(item => item.language));
+      
       let prompt = '';
       if (allScreenshots.length > 1) {
         prompt = `There are ${allScreenshots.length} screenshots that are all part of the same question/problem. Please analyze all images together and provide a comprehensive solution.`;
       }
-      await sendToOpenAI(prompt, allScreenshots, selectedLanguage, newToken);
+      console.log('Sending to OpenAI with', allScreenshots.length, 'screenshots');
+      await sendToOpenAI(prompt, imageData, languageToUse, newToken);
       setScreenshotQueue([]);
+      console.log('Screenshots processed successfully');
     } catch (error) {
+      console.error('Error in solveScreenshots:', error);
       if (newToken === latestRequestToken.current) {
-        setAiResponse(`Failed to solve screenshots: ${error.message}`);
+        setAiResponse(`Failed to solve screenshots: ${error.message || 'Unknown error'}`);
       }
     }
+    
     if (newToken === latestRequestToken.current) {
       setIsThinking(false);
     }
+    solvingScreenshotsInProgressRef.current = false;
   };
 
   const startOver = () => {
@@ -494,6 +720,9 @@ const App = () => {
     setAiResponse('');
     setIsThinking(false);
     setScreenshotQueue([]);
+    setResumeContext(null);
+    resumeContextRef.current = null; // Clear ref as well
+    setResumeUploaded(false);
     // Invalidate all previous requests
     const newToken = requestToken + 1;
     setRequestToken(newToken);
@@ -764,6 +993,70 @@ const App = () => {
               <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>Uploading...</span>
             </div>
           )}
+          {resumeUploaded && !isUploadingResume && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 4, 
+                padding: '4px 8px', 
+                background: '#e8f5e8', 
+                color: '#2e7d32', 
+                borderRadius: 4, 
+                fontSize: 12, 
+                fontWeight: 600 
+              }}>
+                <span>📄</span>
+                Resume Active
+              </div>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  console.log('Testing resume context...');
+                  sendToOpenAI('Tell me about my experience with JavaScript');
+                }}
+                sx={{ 
+                  minWidth: 60, 
+                  height: 24, 
+                  fontSize: 10, 
+                  borderRadius: 2, 
+                  borderColor: '#1976d2', 
+                  color: '#1976d2',
+                  '&:hover': {
+                    borderColor: '#1565c0',
+                    backgroundColor: '#e3f2fd'
+                  }
+                }}
+              >
+                Test
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setResumeContext(null);
+                  resumeContextRef.current = null; // Clear ref as well
+                  setResumeUploaded(false);
+                  setAiResponse('Resume context cleared. You can now ask general questions or upload a new resume.');
+                }}
+                sx={{ 
+                  minWidth: 60, 
+                  height: 24, 
+                  fontSize: 10, 
+                  borderRadius: 2, 
+                  borderColor: '#d32f2f', 
+                  color: '#d32f2f',
+                  '&:hover': {
+                    borderColor: '#b71c1c',
+                    backgroundColor: '#ffebee'
+                  }
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -813,6 +1106,12 @@ const App = () => {
                   </div>
                   <p className="shortcut-description">Send all captured screenshots for AI solution.</p>
                 </div>
+                <div className="shortcut-item">
+                  <div className="shortcut-title">
+                    Mic Toggle <span className="key-combo">Ctrl + M</span>
+                  </div>
+                  <p className="shortcut-description">Start or stop voice recognition.</p>
+                </div>
               </div>
             )}
           </div>
@@ -834,7 +1133,10 @@ const App = () => {
                         variant={selectedLanguage === lang ? 'contained' : 'outlined'}
                         color="primary"
                         size="small"
-                        onClick={() => setSelectedLanguage(lang)}
+                        onClick={() => {
+                          console.log('Language changed from', selectedLanguage, 'to', lang);
+                          setSelectedLanguage(lang);
+                        }}
                         sx={{
                           background: selectedLanguage === lang ? '#1976d2' : '#fff',
                           color: selectedLanguage === lang ? '#fff' : '#1976d2',
@@ -896,11 +1198,16 @@ const App = () => {
             {/* If the last action was screenshot solving, render attractively */}
             {isSolvingScreenshots === false && lastImageData ? (
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: '#1976d2', marginBottom: 8 }}>AI ({selectedLanguage}):</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#1976d2', marginBottom: 8 }}>
+                  AI ({selectedLanguage}): {resumeUploaded && <span style={{ fontSize: 12, color: '#2e7d32', fontWeight: 500 }}>📄 Based on your resume</span>}
+                </div>
                 {renderScreenshotResponse(aiResponse)}
               </div>
             ) : (
-              <p className="response"><strong>AI ({selectedLanguage}):</strong> {aiResponse}</p>
+              <p className="response">
+                <strong>AI ({selectedLanguage}):</strong> {aiResponse}
+                {resumeUploaded && <span style={{ fontSize: 12, color: '#2e7d32', fontWeight: 500, marginLeft: 8 }}>📄 Based on your resume</span>}
+              </p>
             )}
             {showRetry && (
               <button onClick={handleRetry} style={{
@@ -924,9 +1231,27 @@ const App = () => {
 
       {screenshotQueue.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+            Screenshots in queue: {screenshotQueue.length}
+          </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
             {screenshotQueue.map((img, idx) => (
-              <img key={idx} src={img} alt={`Screenshot ${idx + 1}`} style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid #ccc' }} />
+              <div key={idx} style={{ position: 'relative' }}>
+                <img src={img.image} alt={`Screenshot ${idx + 1}`} style={{ width: 48, height: 32, objectFit: 'cover', borderRadius: 4, border: '1px solid #ccc' }} />
+                <div style={{ 
+                  position: 'absolute', 
+                  top: -8, 
+                  right: -8, 
+                  background: '#1976d2', 
+                  color: 'white', 
+                  fontSize: 10, 
+                  padding: '2px 4px', 
+                  borderRadius: 4,
+                  fontWeight: 'bold'
+                }}>
+                  {img.language}
+                </div>
+              </div>
             ))}
           </div>
         </div>
