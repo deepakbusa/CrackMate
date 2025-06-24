@@ -9,7 +9,6 @@ import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CircularProgress from '@mui/material/CircularProgress';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
-import Skeleton from '@yisheng90/react-loading';
 
 const AZURE_DOC_INTELLIGENCE_KEY = process.env.REACT_APP_AZURE_DOC_INTELLIGENCE_KEY;
 const AZURE_DOC_INTELLIGENCE_ENDPOINT = process.env.REACT_APP_AZURE_DOC_INTELLIGENCE_ENDPOINT;
@@ -35,7 +34,7 @@ const App = () => {
   const [aiResponse, setAiResponse] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('Python');
+  const [selectedLanguage, setSelectedLanguage] = useState('Java');
   const [isSettingsHovered, setIsSettingsHovered] = useState(false);
   const [glassOpacity, setGlassOpacity] = useState(0.6);
   const [isVisible, setIsVisible] = useState(true); // New state to track visibility
@@ -266,6 +265,10 @@ const App = () => {
     if (contentHeight > 0) {
       totalHeight = Math.max(totalHeight, contentHeight + 120); // 120px for header and padding
     }
+
+    // Cap the window height at the available screen height
+    let maxHeight = window.screen && window.screen.availHeight ? window.screen.availHeight : 800;
+    totalHeight = Math.min(totalHeight, maxHeight);
     
     if (window.electron && window.electron.setSize) {
       window.electron.setSize(600, Math.max(150, totalHeight));
@@ -450,7 +453,7 @@ This is a placeholder resume content for testing purposes.`;
         return;
       }
       // Send extracted text to OpenAI for context
-      const contextPrompt = `Please analyze this resume and extract key information about my background, skills, experience, and projects. Format it clearly for future interview questions.
+      const contextPrompt = `Please analyze this resume and extract key complete information about my general details, background, skills, experience, and projects. Format it clearly for future interview questions.
 
 RESUME CONTENT:
 ${extractedText}
@@ -515,11 +518,11 @@ RESUME CONTEXT:
 ${resumeContextRef.current}
 
 IMPORTANT INSTRUCTIONS:
-1. Always answer questions from the user's perspective using their actual experience from the resume
-2. If a question asks about something not in the resume, say "Based on my resume, I don't have experience with [topic]. However, I can discuss [related experience from resume]."
-3. Keep answers concise and interview-ready
+1. Always answer questions from the user's perspective using their actual experience if needed from the resume
+2. If a question asks about something not in the resume, answer it very short and give answer"
+3. Keep answers concise, very short and interview-ready
 4. Use specific examples from the resume when possible
-5. If it's a coding question, provide the solution in ${targetLanguage}
+5. If it's a coding question or asking defination, provide the defination and solution in ${targetLanguage} dont use resume content here.
 6. Be honest about limitations based on the resume content
 7. NEVER introduce yourself as an AI assistant - always answer as the person from the resume`;
         
@@ -545,7 +548,7 @@ IMPORTANT INSTRUCTIONS:
       }
       
       if (imageData) {
-        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present, respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf it is an aptitude or option-based question, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
+        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a correct solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present and basic structure of code is there , respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution which is filled in basic structure of code and dont change function names just fill code in it in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf it is an aptitude or option-based question, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
       }
 
       if (imageData) {
@@ -667,6 +670,10 @@ IMPORTANT INSTRUCTIONS:
   };
 
   const solveScreenshots = async () => {
+    if (solvingScreenshotsInProgressRef.current) {
+      console.log('solveScreenshots: Already in progress, ignoring duplicate call');
+      return;
+    }
     solvingScreenshotsInProgressRef.current = true;
     console.log('solveScreenshots called, queue length:', screenshotQueueRef.current.length);
     if (screenshotQueueRef.current.length === 0) {
@@ -989,35 +996,9 @@ IMPORTANT INSTRUCTIONS:
             </Button>
           )}
           {isUploadingResume && (
-            <div className="skeleton-container" style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 16, 
-              padding: '20px 0',
-              width: '100%'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <CircularProgress size={18} color="primary" />
-                <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>
-                  Uploading and analyzing resume...
-                </span>
-              </div>
-              
-              {/* Skeleton loading for resume analysis */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Skeleton width="100%" height={16} />
-                  <Skeleton width="95%" height={16} />
-                  <Skeleton width="90%" height={16} />
-                  <Skeleton width="85%" height={16} />
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Skeleton width="92%" height={14} />
-                  <Skeleton width="88%" height={14} />
-                  <Skeleton width="94%" height={14} />
-                </div>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CircularProgress size={18} color="primary" />
+              <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>Uploading...</span>
             </div>
           )}
           {resumeUploaded && !isUploadingResume && (
@@ -1202,53 +1183,21 @@ IMPORTANT INSTRUCTIONS:
         </div>
       </div>
 
-      <div className="content-area" style={{ paddingRight: '8px', marginBottom: '10px', overflow: 'visible', width: '100%' }}>
+      <div className="content-area">
         {isListening && (
           <p className="listening-indicator">🎤 Listening... Speak now!</p>
         )}
         {transcript && !isListening && (
           <p className="result"><strong>You said:</strong> {transcript}</p>
         )}
-        {isThinking && !isSolvingScreenshots && !screenshotQueue.length && (
-          <div className="loading-container skeleton-container">
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: 16, 
-              padding: '20px 0',
-              width: '100%'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <CircularProgress size={20} color="primary" />
-                <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>
-                  {resumeUploaded ? 'Analyzing your question based on resume...' : 'Processing your request...'}
-                </span>
-              </div>
-              
-              {/* Skeleton loading for AI response */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* AI label skeleton */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Skeleton width={80} height={16} />
-                  {resumeUploaded && <Skeleton width={120} height={12} />}
-                </div>
-                
-                {/* Response content skeleton */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <Skeleton width="100%" height={16} />
-                  <Skeleton width="95%" height={16} />
-                  <Skeleton width="90%" height={16} />
-                  <Skeleton width="85%" height={16} />
-                  <Skeleton width="92%" height={16} />
-                </div>
-                
-                {/* Additional skeleton lines for longer responses */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Skeleton width="88%" height={14} />
-                  <Skeleton width="94%" height={14} />
-                  <Skeleton width="87%" height={14} />
-                </div>
-              </div>
+        {(isThinking || isSolvingScreenshots) && (
+          <div className="loading-container">
+            <div className="loading-spinner">
+              <CircularProgress size={24} color="primary" />
+            </div>
+            <div className="loading-text">
+              <span className="loading-title">Processing your request...</span>
+              <span className="loading-subtitle">Analyzing and generating response</span>
             </div>
           </div>
         )}
@@ -1316,66 +1265,6 @@ IMPORTANT INSTRUCTIONS:
         </div>
       )}
 
-      {isSolvingScreenshots && (
-        <div className="skeleton-container" style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: 16, 
-          padding: '20px 0',
-          width: '100%'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <CircularProgress size={20} color="primary" />
-            <span style={{ color: '#1976d2', fontWeight: 500, fontSize: 14 }}>
-              Analyzing screenshots and generating solution...
-            </span>
-          </div>
-          
-          {/* Skeleton loading for screenshot response */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* AI label skeleton */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Skeleton width={80} height={16} />
-              <Skeleton width={120} height={12} />
-            </div>
-            
-            {/* Section skeletons for screenshot response */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Approach/Comparison section */}
-              <div>
-                <Skeleton width={100} height={18} style={{ marginBottom: 8 }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Skeleton width="100%" height={14} />
-                  <Skeleton width="95%" height={14} />
-                  <Skeleton width="90%" height={14} />
-                </div>
-              </div>
-              
-              {/* Solution section */}
-              <div>
-                <Skeleton width={80} height={18} style={{ marginBottom: 8 }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Skeleton width="100%" height={14} />
-                  <Skeleton width="98%" height={14} />
-                  <Skeleton width="92%" height={14} />
-                  <Skeleton width="96%" height={14} />
-                  <Skeleton width="89%" height={14} />
-                </div>
-              </div>
-              
-              {/* Complexity section */}
-              <div>
-                <Skeleton width={90} height={18} style={{ marginBottom: 8 }} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <Skeleton width="85%" height={14} />
-                  <Skeleton width="88%" height={14} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <style>{`
         .settings-content .shortcut-title {
           display: flex;
@@ -1432,31 +1321,6 @@ IMPORTANT INSTRUCTIONS:
         .solution-block {
           scrollbar-width: thin;
           scrollbar-color: #1976d2 #23272e;
-        }
-        
-        /* Skeleton loading styles */
-        .skeleton-container {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 8px;
-          padding: 16px;
-          margin: 8px 0;
-        }
-        
-        /* Custom skeleton animation */
-        .skeleton-pulse {
-          animation: skeleton-pulse 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes skeleton-pulse {
-          0% {
-            opacity: 0.6;
-          }
-          50% {
-            opacity: 1;
-          }
-          100% {
-            opacity: 0.6;
-          }
         }
       `}</style>
     </div>
