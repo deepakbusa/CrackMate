@@ -10,7 +10,7 @@ body {
   cursor: default !important;
 }
 
-/* Hide all scrollbars except for code blocks */
+/* Hide all scrollbars except for code blocks and content-area */
 * {
   scrollbar-width: none !important; /* Firefox */
   -ms-overflow-style: none !important; /* Internet Explorer 10+ */
@@ -420,7 +420,25 @@ body {
 }
 
 .content-area {
-  /* Removed max-height and overflow-y for dynamic height */
   padding-right: 8px;
   margin-bottom: 10px;
+  overflow-y: auto;
+  max-height: calc(100vh - 120px);
+  width: 100%;
+  scrollbar-width: auto !important;
+  -ms-overflow-style: auto !important;
+}
+
+.content-area::-webkit-scrollbar {
+  display: block !important;
+  width: 8px;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background: #1976d2;
+  border-radius: 4px;
+}
+
+.content-area::-webkit-scrollbar-track {
+  background: #23272e;
 }
