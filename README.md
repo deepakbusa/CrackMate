@@ -41,27 +41,6 @@
 
 ---
 
-## 🚀 Getting Started
-
-1. **Clone the repo:**
-   ```bash
-   git clone <your-repo-url>
-   cd CrackMate
-   ```
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-3. **Set up environment variables:**
-   - Copy `.env.example` to `.env` and add your Azure/OpenAI API keys and endpoints.
-4. **Run the app:**
-   ```bash
-   npm start
-   ```
-   This launches both the React app and Electron shell.
-
----
-
 ## 🛠️ Usage Guide
 
 - **Start/Stop Listening:**
