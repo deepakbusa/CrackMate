@@ -1,46 +1,85 @@
-# CrackMate
+# CrackMate 🚀
 
-CrackMate is a modern, AI-powered coding and interview assistant built with Electron and React. It helps you practice coding and aptitude questions, analyze screenshots, upload your resume for personalized interview prep, and interact with AI using your voice—all in a beautiful, desktop-friendly UI.
+**CrackMate** is your all-in-one, AI-powered coding and interview assistant for desktop. Built with Electron and React, it transforms your interview prep and coding practice with seamless screenshot solving, voice interaction, and personalized answers—all in a stunning, privacy-first UI.
 
-## Features
+---
 
-- **Voice Assistant:** Start/stop listening and ask coding or aptitude questions by voice. AI only responds when you ask a question.
-- **Screenshot Solving:** Take a screenshot of any coding or aptitude problem (even with a solution), and CrackMate will extract, analyze, and provide:
-  - For coding: Approach, Solution (with code/comments), Complexity (time/space, as bullets), or Comparison if a solution is present.
-  - For aptitude: Correct answer and a short explanation.
-- **Resume Upload:** Upload your PDF/DOCX resume. The AI will use your background to personalize interview answers.
-- **Keyboard Shortcuts:** Quickly take screenshots, move the window, start over, toggle visibility, and more.
-- **Beautiful UI:** Modern, responsive, and distraction-free design with dynamic content areas and code blocks.
-- **No unnecessary file saving:** Screenshots are processed in-memory for privacy and speed.
+## ✨ Features at a Glance
 
-## Setup
+- 🎤 **Voice Assistant**
+  - Instantly toggle the mic with `Ctrl+M` or the UI button.
+  - Ask coding or aptitude questions by voice—AI responds only when you ask.
+  - Robust state management prevents accidental double-activation.
+
+- 📸 **Screenshot Solving**
+  - Capture multiple screenshots in a session (with language selection for each).
+  - Send all screenshots together for a single, context-rich AI response.
+  - For coding problems: Get approach, solution (with code/comments), and **Time/Space Complexity** (just the values, no fluff).
+  - For aptitude: Get the correct answer and a concise explanation.
+  - Screenshots are processed in-memory—nothing is saved to disk for privacy.
+
+- 📝 **Resume Upload & Contextual Answers**
+  - Upload your PDF/DOCX resume.
+  - All subsequent questions (typed, spoken, or screenshot) are answered using your resume context for personalized interview prep.
+  - If no resume is uploaded, answers are general.
+
+- 🌐 **Language Selection**
+  - Choose your preferred programming language for each screenshot.
+  - The AI generates solutions in the selected language (e.g., Python, Java, etc.).
+
+- 🖥️ **Beautiful, Dynamic UI**
+  - Modern, distraction-free design with smooth scrollbars and responsive layout.
+  - Scrollbars appear only when content overflows—never cluttering the view.
+  - Screenshot thumbnails with language labels for easy review before solving.
+
+- ⚡ **Lightning-Fast Shortcuts**
+  - Take screenshots, toggle mic, move the window, start over, and more—all from the keyboard.
+
+- 🔒 **Privacy-First**
+  - No unnecessary file saving. All processing is in-memory.
+  - Your data stays on your device unless you explicitly send it for AI analysis.
+
+---
+
+## 🚀 Getting Started
 
 1. **Clone the repo:**
    ```bash
    git clone <your-repo-url>
-   cd speech-ui
+   cd CrackMate
    ```
 2. **Install dependencies:**
    ```bash
    npm install
    ```
 3. **Set up environment variables:**
-   - Copy `.env.example` to `.env` and fill in your Azure/OpenAI API keys and endpoints.
+   - Copy `.env.example` to `.env` and add your Azure/OpenAI API keys and endpoints.
 4. **Run the app:**
    ```bash
    npm start
    ```
-   This will launch both the React app and Electron shell.
+   This launches both the React app and Electron shell.
 
-## Usage
+---
 
-- **Start/Stop Listening:** Click the Start button to begin voice recognition. Click Stop to end.
-- **Ask Questions:** Speak your coding or aptitude question. The AI will respond only to questions.
-- **Take Screenshots:** Use the shortcut or UI to capture a problem from your screen. The AI will analyze and respond with structured sections.
-- **Upload Resume:** Use the Upload Resume button to provide your background for personalized answers.
-- **Read AI Responses:** All responses are structured, readable, and code is formatted with scroll and syntax highlighting.
+## 🛠️ Usage Guide
 
-## Keyboard Shortcuts
+- **Start/Stop Listening:**
+  - Click the mic button or press `Ctrl+M` to toggle voice recognition.
+- **Ask Questions:**
+  - Speak or type your coding/aptitude question. The AI responds only to direct questions.
+- **Take Screenshots:**
+  - Use the shortcut or UI to capture problems. Select the language for each screenshot.
+  - All screenshots in a session are solved together for a single, comprehensive answer.
+- **Upload Resume:**
+  - Click 'Upload Resume' to provide your background. All answers will use your resume context.
+- **Read AI Responses:**
+  - Responses are structured, with code blocks, complexity values, and clear explanations.
+  - Scrollbars appear only when content overflows.
+
+---
+
+## 🌟 Keyboard Shortcuts
 
 - **Take Screenshot:** `Ctrl + H`
 - **Start Over:** `Ctrl + G`
@@ -48,6 +87,18 @@ CrackMate is a modern, AI-powered coding and interview assistant built with Elec
 - **Toggle App Visibility:** `Ctrl + .`
 - **Quit App:** `Ctrl + Q`
 - **Solve Screenshots:** `Ctrl + Enter`
+- **Toggle Mic:** `Ctrl + M`
+
+---
+
+## 💡 Pro Tips
+
+- **Dynamic Expansion:** The app window grows only as content overflows—never more than needed.
+- **Session Solving:** Take multiple screenshots, then solve them all at once for a unified answer.
+- **Language Flexibility:** Each screenshot can have its own language selection.
+- **Resume Context:** Upload your resume once; all future answers are tailored to your background.
+
+---
 
 ## License
 
@@ -55,4 +106,4 @@ MIT
 
 ---
 
-_CrackMate: Your AI-powered coding and interview companion._
+_CrackMate: Your AI-powered coding and interview companion. Level up your prep, your way._
