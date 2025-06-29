@@ -89,15 +89,6 @@ const App = () => {
           case 'startOver':
             startOver();
             break;
-          case 'toggleVisibility':
-            setIsVisible(prev => {
-              const newVisible = !prev;
-              if (window.electron && window.electron.toggleVisibility) {
-                window.electron.toggleVisibility(newVisible);
-              }
-              return newVisible;
-            });
-            break;
           case 'solveScreenshots':
             console.log('solveScreenshots shortcut triggered, queue length:', screenshotQueueRef.current.length);
             if (screenshotQueueRef.current.length === 0) {
@@ -548,7 +539,7 @@ IMPORTANT INSTRUCTIONS:
       }
       
       if (imageData) {
-        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a correct solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present and basic structure of code is there , respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution which is filled in basic structure of code and dont change function names just fill code in it in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf it is an aptitude or option-based question, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
+        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a correct solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present and basic structure of code is there , respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution which is filled in basic structure of code and dont change function names just fill code in it in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\n.If it is an aptitude or option-based question than Think completly and correctly and analyze given question and solve it completly and correctly and, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
       }
 
       if (imageData) {
