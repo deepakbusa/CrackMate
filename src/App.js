@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import * as sdk from 'microsoft-cognitiveservices-speech-sdk';
 import axios from 'axios';
 import html2canvas from 'html2canvas';
 import './App.css';
@@ -63,11 +62,13 @@ const App = () => {
   const lastToggleTimeRef = useRef(0); // Ref to track last toggle time for debouncing
   const resumeContextRef = useRef(resumeContext);
 
-  const SPEECH_KEY = process.env.REACT_APP_SPEECH_KEY;
-  const SPEECH_REGION = "eastus";
   const API_KEY = process.env.REACT_APP_API_KEY;
   const API_URL = process.env.REACT_APP_API_URL;
   const DEPLOYMENT_ID = process.env.REACT_APP_DEPLOYMENT_ID;
+
+  const ASSEMBLYAI_API_KEY = process.env.REACT_APP_SPEECH_KEY; // Use env var for AssemblyAI
+  let mediaRecorder;
+  let audioChunks = [];
 
   const moveWindow = (direction) => {
     const step = 20;
@@ -274,81 +275,61 @@ const App = () => {
     return QUESTION_WORDS.some(word => lower.startsWith(word + ' '));
   };
 
-  // Always use microphone for speech recognition
+  // Use AssemblyAI for speech-to-text
   const startRecognition = async () => {
-    // Set listening state immediately
     setIsListening(true);
     setTranscript('');
     setAiResponse('');
-    
-    let stream;
     try {
-      if (window.navigator.mediaDevices && window.AudioContext) {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new window.MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = event => {
+        audioChunks.push(event.data);
+      };
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        // 1. Upload audio to AssemblyAI
+        const uploadRes = await fetch('https://api.assemblyai.com/v2/upload', {
+          method: 'POST',
+          headers: { 'authorization': ASSEMBLYAI_API_KEY },
+          body: audioBlob
         });
-      } else {
-        setTranscript('Microphone access is not supported in this browser.');
-        setIsListening(false);
-        return;
-      }
-      audioStreamRef.current = stream;
-
-      if (!SPEECH_KEY || !SPEECH_REGION) {
-        setTranscript('Azure Speech Service credentials are missing. Please check your environment variables.');
-        setIsListening(false);
-        cleanupRecognition();
-        return;
-      }
-
-      const speechConfig = sdk.SpeechConfig.fromSubscription(SPEECH_KEY, SPEECH_REGION);
-      speechConfig.speechRecognitionLanguage = 'en-US';
-      speechConfig.setProperty(sdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, "15000");
-      speechConfig.setProperty(sdk.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "3000");
-      speechConfig.setProperty(sdk.PropertyId.Speech_SegmentationSilenceTimeoutMs, "3000");
-
-      const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
-      const recognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
-      recognizerRef.current = recognizer;
-
-      recognizer.recognizing = (s, e) => {
-        setTranscript(`Listening... ${e.result.text}`);
-      };
-
-      recognizer.recognized = async (s, e) => {
-        if (e.result.reason === sdk.ResultReason.RecognizedSpeech && e.result.text.trim()) {
-          const userInput = e.result.text.trim();
-          setTranscript(userInput);
-          // Always send to API
-          setIsListening(false);
-          cleanupRecognition();
-          await sendToOpenAI(userInput, null, selectedLanguage);
+        const uploadData = await uploadRes.json();
+        const audio_url = uploadData.upload_url;
+        // 2. Request transcription
+        const transcriptRes = await fetch('https://api.assemblyai.com/v2/transcript', {
+          method: 'POST',
+          headers: {
+            'authorization': ASSEMBLYAI_API_KEY,
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({ audio_url })
+        });
+        const transcriptData = await transcriptRes.json();
+        const transcriptId = transcriptData.id;
+        // 3. Poll for result
+        let transcriptText = '';
+        while (true) {
+          const pollingRes = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+            headers: { 'authorization': ASSEMBLYAI_API_KEY }
+          });
+          const pollingData = await pollingRes.json();
+          if (pollingData.status === 'completed') {
+            transcriptText = pollingData.text;
+            break;
+          } else if (pollingData.status === 'failed') {
+            transcriptText = 'Transcription failed.';
+            break;
+          }
+          await new Promise(res => setTimeout(res, 2000));
         }
-      };
-
-      recognizer.canceled = (s, e) => {
-        setIsListening(false);
-        if (e.reason === sdk.CancellationReason.Error) {
-          setTranscript(`Speech recognition error: ${e.errorDetails}`);
-        } else if (e.reason === sdk.CancellationReason.EndOfStream) {
-          setTranscript('No speech detected. Please try again and speak clearly.');
-        } else {
-          setTranscript('Speech recognition was canceled.');
-        }
-        cleanupRecognition();
-      };
-
-      recognizer.sessionStopped = (s, e) => {
+        setTranscript(transcriptText);
         setIsListening(false);
         cleanupRecognition();
+        await sendToOpenAI(transcriptText, null, selectedLanguage);
       };
-
-      recognizer.startContinuousRecognitionAsync();
-      // No timeout! Only user can stop.
+      mediaRecorder.start();
     } catch (err) {
       setIsListening(false);
       setTranscript(`Microphone access denied: ${err.message}`);
@@ -357,26 +338,11 @@ const App = () => {
   };
 
   const stopRecognition = () => {
-    try {
-      setIsListening(false); // Set state immediately
-      if (recognizerRef.current) {
-        try {
-          const stopPromise = recognizerRef.current.stopContinuousRecognitionAsync();
-          if (stopPromise && typeof stopPromise.catch === 'function') {
-            stopPromise.catch(error => {
-              console.error('Error stopping recognition:', error);
-            });
-          }
-        } catch (error) {
-          console.error('Error stopping recognition:', error);
-        }
-      }
-      cleanupRecognition();
-    } catch (error) {
-      console.error('Error in stopRecognition:', error);
-      setIsListening(false);
-      cleanupRecognition();
+    setIsListening(false);
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
     }
+    cleanupRecognition();
   };
 
   const handleResumeUpload = async (event) => {
@@ -539,7 +505,27 @@ IMPORTANT INSTRUCTIONS:
       }
       
       if (imageData) {
-        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a correct solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present and basic structure of code is there , respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution which is filled in basic structure of code and dont change function names just fill code in it in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\n.If it is an aptitude or option-based question than Think completly and correctly and analyze given question and solve it completly and correctly and, respond with exactly two sections, each with a bold heading:\n\n**Answer:**\n- The correct answer, including the option number.\n\n**Short explanation:**\n- A very short explanation of the answer.\n\nFormat your response clearly and do not include any extra commentary or markdown code blocks. Only output the sections as described above.`;
+        userPrompt = `You are an expert coding and aptitude interview assistant. Analyze the image(s) for either a coding problem or an aptitude/option-based question.\n\nIf it is a coding problem and a correct solution/code is present in the image, respond with three sections:\n\n**Comparison:**\n- Compare the provided solution with an optimized solution. If the provided solution is wrong, correct it and provide the updated solution.\n\n**Optimized Solution:**\n- The best/optimized solution in ${targetLanguage}, perfectly formatted, with comments allowed, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\nIf no solution is present and basic structure of code is there , respond with three sections:\n\n**Approach:**\n- Three concise bullet points describing the approach, in a way that I can read directly to an interviewer.\n\n**Solution:**\n- The complete solution which is filled in basic structure of code and dont change function names just fill code in it in ${targetLanguage}, perfectly formatted, with comments allowed with every line, very small font, and syntax highlighting.\n\n**Complexity:**\n- Time Complexity: O(n)\n- Space Complexity: O(1)\n\n.
+        If it is an **aptitude or option-based question**, follow this format strictly:
+
+- Carefully observe all parts of the screenshot (question, diagram, data).
+- Think step-by-step, and ensure complete accuracy before answering.
+
+Then respond in **exactly two sections**, using the following structure:
+
+**Answer:**
+- State the correct answer option (e.g., Option C or Option A) and give answer, clearly and confidently.
+
+**Short Explanation:**
+- Provide a **step-by-step explanation** of how the answer was derived.
+- Use concise logic, calculations, or elimination to explain the reasoning.
+- Ensure the explanation is understandable by a non-expert reader (like an interview candidate).
+- Avoid markdown, bold, or unnecessary symbols—this should be clean, plain text, ready to read aloud or copy-paste into a UI.
+
+---
+
+Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's described. Only output the sections as specified. Think carefully and prioritize clarity and correctness in all answers.
+`;
       }
 
       if (imageData) {
@@ -693,9 +679,12 @@ IMPORTANT INSTRUCTIONS:
       console.log('Using language for screenshots:', languageToUse);
       console.log('Screenshot languages:', allScreenshots.map(item => item.language));
       
+      // Always require step-by-step explanation and answer for all screenshot questions
       let prompt = '';
       if (allScreenshots.length > 1) {
-        prompt = `There are ${allScreenshots.length} screenshots that are all part of the same question/problem. Please analyze all images together and provide a comprehensive solution.`;
+        prompt = `There are ${allScreenshots.length} screenshots that are all part of the same question/problem. Please analyze all images together and provide a comprehensive solution. Carefully observe every part of each screenshot. For every question, always provide a detailed step-by-step explanation under the 'short explanation' section, and only give the final answer after your reasoning. Think deeply and ensure the answer is accurate and correct. Do not rush; correctness and thoroughness are most important.`;
+      } else {
+        prompt = `Carefully observe every part of the screenshot. For every question, always provide a detailed step-by-step explanation under the 'short explanation' section, and only give the final answer after your reasoning. Think deeply and ensure the answer is accurate and correct. Do not rush; correctness and thoroughness are most important.`;
       }
       console.log('Sending to OpenAI with', allScreenshots.length, 'screenshots');
       await sendToOpenAI(prompt, imageData, languageToUse, newToken);
@@ -763,8 +752,8 @@ IMPORTANT INSTRUCTIONS:
       'solution',
       'optimized solution',
       'complexity',
-      'answer',
-      'short explanation'
+      'short explanation',
+      'answer'
     ];
     return (
       <div className="screenshot-response-box">
@@ -907,6 +896,16 @@ IMPORTANT INSTRUCTIONS:
             );
           }
           // Default rendering for other sections
+          if (key === 'short explanation' && sections[key]) {
+            return (
+              <div key={key} style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 4, letterSpacing: 0.2 }}>
+                  {key.charAt(0).toUpperCase() + key.slice(1)}
+                </div>
+                <pre style={{ fontSize: 15, color: '#f8fafd', background: 'rgba(255,255,255,0.04)', borderRadius: 4, padding: '8px 12px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', margin: 0 }}>{sections[key]}</pre>
+              </div>
+            );
+          }
           return sections[key] ? (
             <div key={key} style={{ marginBottom: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 4, letterSpacing: 0.2 }}>
