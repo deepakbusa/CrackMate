@@ -3,44 +3,6 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
-// Windows: SetWindowDisplayAffinity for invisibility
-let setWindowDisplayAffinity = null;
-if (os.platform() === 'win32') {
-  try {
-    const ffi = require('ffi-napi');
-    const ref = require('ref-napi');
-    const HWND = ref.refType('void');
-    const DWORD = 'uint32';
-
-    const user32 = ffi.Library('user32', {
-      'SetWindowDisplayAffinity': ['bool', [HWND, DWORD]],
-      'GetLastError': ['int32', []],
-    });
-
-    const WDA_EXCLUDEFROMCAPTURE = 0x00000011;
-    const osVersion = os.release();
-    const buildNumber = parseInt(osVersion.split('.')[2], 10);
-    const isSupported = buildNumber >= 18362;
-
-    if (!isSupported) {
-      console.warn(`Windows version ${osVersion} does not support WDA_EXCLUDEFROMCAPTURE.`);
-    }
-
-    setWindowDisplayAffinity = (windowHandle) => {
-      if (!isSupported) return;
-
-      const hwnd = ref.ref(windowHandle);
-      const success = user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE);
-      if (!success) {
-        const errorCode = user32.GetLastError();
-        console.error(`SetWindowDisplayAffinity failed. Error code: ${errorCode}`);
-      }
-    };
-  } catch (error) {
-    console.error('Failed to load ffi-napi or ref-napi:', error.message);
-  }
-}
-
 function createWindow() {
   const { width, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
   const winWidth = 600;
@@ -57,6 +19,8 @@ function createWindow() {
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
+    focusable: false,
+    fullscreenable: false,
     title: "SecureWindow",
     webPreferences: {
       nodeIntegration: false,
@@ -65,16 +29,11 @@ function createWindow() {
     },
   });
 
+  // Set alwaysOnTop to 'screen-saver' level for maximum persistence
+  win.setAlwaysOnTop(true, 'screen-saver');
+
   // Prevent screen capture/screen recording
   win.setContentProtection(true);
-
-  // Windows: Apply SetWindowDisplayAffinity
-  if (os.platform() === 'win32' && setWindowDisplayAffinity) {
-    win.once('ready-to-show', () => {
-      const hwnd = win.getNativeWindowHandle();
-      if (hwnd) setWindowDisplayAffinity(hwnd);
-    });
-  }
 
   // Handle renderer resize requests
   ipcMain.on('resize-window', (event, { width, height }) => {
@@ -169,6 +128,7 @@ function createWindow() {
     });
     // Toggle visibility (Ctrl+.)
     globalShortcut.register('Control+.', () => {
+      // Stealth mode: Only hide/show the window, do not send any message to renderer or trigger DOM/UI events
       if (win.isVisible()) {
         win.hide();
       } else {
@@ -200,7 +160,9 @@ app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-});app.on('activate', () => {
+});
+
+app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
