@@ -81,7 +81,7 @@
 
 ## License
 
-MIT
+Apache License
 
 ---
 
