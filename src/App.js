@@ -922,19 +922,9 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
   return (
     <div className="App">
       <div className="app-title-section" style={{ width: '100%', display: 'flex', alignItems: 'center', marginBottom: 6, marginTop: 2 }}>
-        <span style={{
-          fontFamily: 'Poppins, Inter, Segoe UI, Arial, sans-serif',
-          fontWeight: 800,
-          fontSize: 18,
-          letterSpacing: 0.8,
-          background: 'linear-gradient(90deg, #1976d2 0%, #40b8cb 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          display: 'inline-block',
-          textShadow: '0 1px 6px rgba(25, 118, 210, 0.10)',
-          marginLeft: 4,
-        }}>
-          CrackMate
+        <img src={`${process.env.PUBLIC_URL}/assets/logo.png`} alt="Logo" style={{ height: 32, width: 32, marginRight: 10 }} />
+        <span style={{ fontFamily: 'Poppins, Inter, Segoe UI, Arial, sans-serif', fontWeight: 800, fontSize: 20, letterSpacing: 0.6, display: 'inline-block', textShadow: '0 1px 6px rgba(25, 118, 210, 0.10)', marginLeft: -3, margintop: 5 }}>
+          <span style={{ color: '#A8AFB5' }}>Crack</span><span style={{ color: '#A8AFB5' }}>Mate</span>
         </span>
       </div>
       <div className="top-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: '100%' }}>
@@ -954,9 +944,9 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
               boxShadow: 0,
               textTransform: 'none',
               letterSpacing: 0.2,
-              background: isSolvingScreenshots ? 'linear-gradient(90deg, #f7971e 0%, #ffd200 100%)' : '#fff',
-              color: isSolvingScreenshots ? '#333' : '#1976d2',
-              border: isSolvingScreenshots ? '1.5px solid #ffd200' : '1px solid #1976d2',
+              background: '#A8AFB5', // Silver
+              color: '#110F40', // Blue
+              border: '1px solid #110F40', // Blue
               opacity: isThinking || isSolvingScreenshots ? 0.7 : 1,
               cursor: isThinking || isSolvingScreenshots ? 'not-allowed' : 'pointer',
               transition: 'all 0.3s',
@@ -975,7 +965,7 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
               color="primary"
               size="small"
               startIcon={<CloudUploadIcon />}
-              sx={{ minWidth: 110, height: 32, fontWeight: 600, fontSize: 14, borderRadius: 2, boxShadow: 0, textTransform: 'none', letterSpacing: 0.2, background: '#fff', color: '#1976d2', border: '1px solid #1976d2' }}
+              sx={{ minWidth: 110, height: 32, fontWeight: 600, fontSize: 14, borderRadius: 2, boxShadow: 0, textTransform: 'none', letterSpacing: 0.2, background: '#A8AFB5', color: '#110F40', border: '1px solid #110F40' }}
             >
               Upload Resume
               <VisuallyHiddenInput
@@ -1014,16 +1004,17 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
                   console.log('Testing resume context...');
                   sendToOpenAI('Tell me about my experience with JavaScript');
                 }}
-                sx={{ 
-                  minWidth: 60, 
-                  height: 24, 
-                  fontSize: 10, 
-                  borderRadius: 2, 
-                  borderColor: '#1976d2', 
-                  color: '#1976d2',
+                sx={{
+                  minWidth: 60,
+                  height: 24,
+                  fontSize: 10,
+                  borderRadius: 2,
+                  borderColor: '#110F40',
+                  color: '#110F40',
+                  background: '#A8AFB5',
                   '&:hover': {
-                    borderColor: '#1565c0',
-                    backgroundColor: '#e3f2fd'
+                    borderColor: '#110F40',
+                    backgroundColor: '#A8AFB5',
                   }
                 }}
               >
@@ -1038,16 +1029,17 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
                   setResumeUploaded(false);
                   setAiResponse('Resume context cleared. You can now ask general questions or upload a new resume.');
                 }}
-                sx={{ 
-                  minWidth: 60, 
-                  height: 24, 
-                  fontSize: 10, 
-                  borderRadius: 2, 
-                  borderColor: '#d32f2f', 
-                  color: '#d32f2f',
+                sx={{
+                  minWidth: 60,
+                  height: 24,
+                  fontSize: 10,
+                  borderRadius: 2,
+                  borderColor: '#A8AFB5',
+                  color: '#110F40',
+                  background: '#A8AFB5',
                   '&:hover': {
-                    borderColor: '#b71c1c',
-                    backgroundColor: '#ffebee'
+                    borderColor: '#110F40',
+                    backgroundColor: '#A8AFB5'
                   }
                 }}
               >
@@ -1066,49 +1058,49 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
           >
             <span className="shortcuts-icon"><KeyboardIcon style={{ fontSize: 28, cursor: 'pointer' }} /></span>
             {isShortcutsHovered && (
-              <div className="settings-content shortcuts-content" ref={shortcutsRef} style={{ position: 'absolute', right: 48, top: 60, zIndex: 1000 }}>
-                <p className="title">Keyboard Shortcuts</p>
+              <div className="settings-content shortcuts-content" ref={shortcutsRef} style={{ position: 'absolute', right: 48, top: 60, zIndex: 1000, background: '#A8AFB5', border: '1px solid #110F40', color: '#110F40' }}>
+                <p className="title" style={{ color: '#110F40', fontWeight: 700 }}>Keyboard Shortcuts</p>
                 <div className="shortcut-item">
-                  <div className="shortcut-title">
-                    Take Screenshot <span className="key-combo">Ctrl + H</span>
+                  <div className="shortcut-title" style={{ color: '#110F40' }}>
+                    Take Screenshot <span className="key-combo" style={{ background: '#110F40', color: '#A8AFB5' }}>Ctrl + H</span>
                   </div>
-                  <p className="shortcut-description">Capture the problem description as a screenshot.</p>
+                  <p className="shortcut-description" style={{ color: '#110F40' }}>Capture the problem description as a screenshot.</p>
                 </div>
                 <div className="shortcut-item">
-                  <div className="shortcut-title">
-                    Start Over <span className="key-combo">Ctrl + G</span>
+                  <div className="shortcut-title" style={{ color: '#110F40' }}>
+                    Start Over <span className="key-combo" style={{ background: '#110F40', color: '#A8AFB5' }}>Ctrl + G</span>
                   </div>
-                  <p className="shortcut-description">Reset and start a new session.</p>
+                  <p className="shortcut-description" style={{ color: '#110F40' }}>Reset and start a new session.</p>
                 </div>
                 <div className="shortcut-item">
-                  <div className="shortcut-title">
-                    Move Window <span className="key-combo">Ctrl + Arrow Keys</span>
+                  <div className="shortcut-title" style={{ color: '#110F40' }}>
+                    Move Window <span className="key-combo" style={{ background: '#110F40', color: '#A8AFB5' }}>Ctrl + Arrow Keys</span>
                   </div>
-                  <p className="shortcut-description">Reposition the window using arrow keys.</p>
+                  <p className="shortcut-description" style={{ color: '#110F40' }}>Reposition the window using arrow keys.</p>
                 </div>
                 <div className="shortcut-item">
-                  <div className="shortcut-title">
-                    Toggle App Visibility <span className="key-combo">Ctrl + .</span>
+                  <div className="shortcut-title" style={{ color: '#110F40' }}>
+                    Toggle App Visibility <span className="key-combo" style={{ background: '#110F40', color: '#A8AFB5' }}>Ctrl + .</span>
                   </div>
-                  <p className="shortcut-description">Show or hide the app window.</p>
+                  <p className="shortcut-description" style={{ color: '#110F40' }}>Show or hide the app window.</p>
                 </div>
                 <div className="shortcut-item">
-                  <div className="shortcut-title">
-                    Quit App <span className="key-combo">Ctrl + Q</span>
+                  <div className="shortcut-title" style={{ color: '#110F40' }}>
+                    Quit App <span className="key-combo" style={{ background: '#110F40', color: '#A8AFB5' }}>Ctrl + Q</span>
                   </div>
-                  <p className="shortcut-description">Exit the application.</p>
+                  <p className="shortcut-description" style={{ color: '#110F40' }}>Exit the application.</p>
                 </div>
                 <div className="shortcut-item">
-                  <div className="shortcut-title">
-                    Solve Screenshots <span className="key-combo">Ctrl + Enter</span>
+                  <div className="shortcut-title" style={{ color: '#110F40' }}>
+                    Solve Screenshots <span className="key-combo" style={{ background: '#110F40', color: '#A8AFB5' }}>Ctrl + Enter</span>
                   </div>
-                  <p className="shortcut-description">Send all captured screenshots for AI solution.</p>
+                  <p className="shortcut-description" style={{ color: '#110F40' }}>Send all captured screenshots for AI solution.</p>
                 </div>
                 <div className="shortcut-item">
-                  <div className="shortcut-title">
-                    Mic Toggle <span className="key-combo">Ctrl + M</span>
+                  <div className="shortcut-title" style={{ color: '#110F40' }}>
+                    Mic Toggle <span className="key-combo" style={{ background: '#110F40', color: '#A8AFB5' }}>Ctrl + M</span>
                   </div>
-                  <p className="shortcut-description">Start or stop voice recognition.</p>
+                  <p className="shortcut-description" style={{ color: '#110F40' }}>Start or stop voice recognition.</p>
                 </div>
               </div>
             )}
@@ -1121,9 +1113,9 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
           >
             <span className="settings-icon">⚙️</span>
             {isSettingsHovered && (
-              <div className="settings-content" ref={settingsRef}>
+              <div className="settings-content" ref={settingsRef} style={{ background: '#A8AFB5', border: '1px solid #110F40', color: '#110F40' }}>
                 <div className="language-section" style={{ marginTop: 16, marginBottom: 8 }}>
-                  <p className="title" style={{ color: '#1976d2', fontWeight: 700 }}>Language:</p>
+                  <p className="title" style={{ color: '#110F40', fontWeight: 700 }}>Language:</p>
                   <div className="language-choice-group">
                     {['Python', 'Java', 'C++'].map(lang => (
                       <Button
@@ -1136,9 +1128,9 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
                           setSelectedLanguage(lang);
                         }}
                         sx={{
-                          background: selectedLanguage === lang ? '#1976d2' : '#fff',
-                          color: selectedLanguage === lang ? '#fff' : '#1976d2',
-                          borderColor: '#1976d2',
+                          background: selectedLanguage === lang ? '#110F40' : '#A8AFB5',
+                          color: selectedLanguage === lang ? '#A8AFB5' : '#110F40',
+                          borderColor: '#110F40',
                           fontWeight: 600,
                           borderRadius: 2,
                           minWidth: 60,
@@ -1155,7 +1147,7 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
                   </div>
                 </div>
                 <div className="slider-section">
-                  <p className="title">Glass Opacity</p>
+                  <p className="title" style={{ color: '#110F40' }}>Glass Opacity</p>
                   <input
                     type="range"
                     min="0.1"
@@ -1164,8 +1156,9 @@ Do NOT introduce yourself. Do NOT provide any headers or summaries beyond what's
                     value={glassOpacity}
                     onChange={handleSliderChange}
                     className="slider"
+                    style={{ accentColor: '#110F40' }}
                   />
-                  <span className="opacity-value">{Math.round(glassOpacity * 100)}%</span>
+                  <span className="opacity-value" style={{ color: '#110F40' }}>{Math.round(glassOpacity * 100)}%</span>
                 </div>
               </div>
             )}

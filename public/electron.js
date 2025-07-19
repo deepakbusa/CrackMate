@@ -33,7 +33,7 @@ function createWindow() {
   win.setAlwaysOnTop(true, 'screen-saver');
 
   // Prevent screen capture/screen recording
-  win.setContentProtection(true);
+  //win.setContentProtection(true);
 
   // Handle renderer resize requests
   ipcMain.on('resize-window', (event, { width, height }) => {
